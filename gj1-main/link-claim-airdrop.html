@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GJTOOL - Airdrop</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="./img/gj.jfif">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <canvas id="deepspace"></canvas> <!-- Canvas cho nền ngôi sao -->
+    <div class="moon">
+        <div class="crat crat1"></div>
+        <div class="crat crat2"></div>
+        <div class="crat crat3"></div>
+        <div class="crat crat4"></div>
+        <div class="crat crat5"></div>
+        <div class="crat crat6"></div>
+    </div>
+    <nav class="nav-menu">
+        <a href="index.html" class="nav-btn">Home</a>
+        <a href="link-claim-airdrop.html" class="nav-btn active">Link Claim Airdrop</a>
+        <a href="gjtool.html" class="nav-btn">Wallet Tools</a>
+        <a href="gjclaim.html" class="nav-btn">Claim GJ</a>
+        <button id="theme-toggle" class="nav-btn">Thay đổi nền</button>
+    </nav>
+
+    <div class="container">
+        <h1>Claim Airdrop</h1>
+        <div class="section">
+            <h2>Link Claim Airdrop</h2>
+            <div id="linkDisplay">Chưa có link nào được gửi...</div>
+            <div class="submit-section">
+                <input type="text" id="linkName" placeholder="Tên">
+                <input type="text" id="linkInput" placeholder="Nhập link airdrop">
+                <button class="btn submit-link-btn" id="submitLinkBtn">Gửi Link</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Cấu hình Firebase
+        const encodedFirebaseConfig = "eyJhcGlLZXkiOiJBSXphU3lCYTQxY01nTXQtaDA3Vm9HY2hudW42VzVVY204Q2ZLY28iLCJhdXRoRG9tYWluIjoiZ2phaXItNWE2ZWYuZmlyZWJhc2VhcHAuY29tIiwicHJvamVjdElkIjoiZ2phaXItNWE2ZWYiLCJzdG9yYWdlQnVja2V0IjoiZ2phaXItNWE2ZWYuZmlyZWJhc2VzdG9yYWdlLmFwcCIsIm1lc3NhZ2luZ1NlbmRlcklkIjoiOTA1NjEyMzM0MDYwIiwiYXBwSWQiOiIxOjkwNTYxMjMzNDA2MDp3ZWI6N2FiMDA2MDkxZTY2NDU2ODYyZTZjOSIsIm1lYXN1cmVtZW50SWQiOiJHLVhXQkU4VzJNRVYifQ==";
+        const firebaseConfig = JSON.parse(atob(encodedFirebaseConfig));
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Hàm hash
+        function simpleHash(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            }
+            return hash;
+        }
+
+        const SECRET_HASH = 3130999719; 
+
+        // Gửi link
+        async function submitLink() {
+            const linkName = document.getElementById('linkName').value.trim();
+            const link = document.getElementById('linkInput').value.trim();
+            console.log('Input:', { linkName, link });
+
+            if (!link) return alert('Vui lòng nhập link!');
+            if (!linkName) return alert('Vui lòng nhập tên link!');
+
+            const password = prompt("Nhập mã để gửi link:");
+            const hashedPassword = simpleHash(password);
+            console.log('Entered password:', password, 'Hash:', hashedPassword);
+
+            if (hashedPassword !== SECRET_HASH) {
+                console.log('Hash không khớp:', hashedPassword, '!=', SECRET_HASH);
+                return alert('Mã sai, bạn không có quyền gửi link!');
+            }
+
+            const timestamp = new Date().toLocaleString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            try {
+                await addDoc(collection(db, "links"), {
+                    name: linkName,
+                    link,
+                    timestamp,
+                    createdAt: new Date().toISOString()
+                });
+                console.log('Gửi link thành công');
+                document.getElementById('linkName').value = '';
+                document.getElementById('linkInput').value = '';
+                loadLinks();
+            } catch (error) {
+                console.error('Lỗi gửi link:', error);
+                alert('Lỗi gửi link: ' + error.message);
+            }
+        }
+
+        // Tải danh sách link
+        async function loadLinks() {
+            const linkDisplay = document.getElementById('linkDisplay');
+            linkDisplay.innerHTML = '<div class="loading">Đang tải link...</div>';
+            try {
+                const q = query(collection(db, "links"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                console.log('Số link tải được:', querySnapshot.size);
+
+                if (querySnapshot.empty) {
+                    linkDisplay.innerHTML = 'Chưa có link nào.';
+                } else {
+                    let linkList = '';
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        linkList += `<div class="link-item">
+                            <div class="link-name">${data.name}</div>
+                            <p>Link: <a href="${data.link}" target="_blank">${data.link}</a></p>
+                            <p>Thời gian: ${data.timestamp}</p>
+                        </div>`;
+                    });
+                    linkDisplay.innerHTML = linkList;
+                }
+            } catch (error) {
+                console.error('Lỗi tải link:', error);
+                linkDisplay.innerHTML = 'Lỗi tải link: ' + error.message;
+            }
+        }
+
+        // Gắn sự kiện
+        document.addEventListener('DOMContentLoaded', () => {
+            const submitBtn = document.getElementById('submitLinkBtn');
+            if (submitBtn) {
+                submitBtn.addEventListener('click', submitLink);
+                console.log('Sự kiện click đã được gắn');
+            } else {
+                console.error('Không tìm thấy nút submitLinkBtn');
+            }
+            loadLinks();
+        });
+    </script>
+
+    <script>
+        // Canvas cho nền ngôi sao
+        var canvas;
+        var context;
+        var screenH;
+        var screenW;
+        var stars = [];
+        var starfps = 60;
+        var numStars = 500;
+        var intervalStars;
+        var intervalFallingStar;
+
+        $(document).ready(function() {
+            screenH = $(window).height();
+            screenW = $(window).width();
+            canvas = $('#deepspace');
+            canvas.attr('height', screenH);
+            canvas.attr('width', screenW);
+            context = canvas[0].getContext('2d');
+
+            for (var i = 0; i < numStars; i++) {
+                var x = Math.round(Math.random() * screenW);
+                var y = Math.round(Math.random() * screenH);
+                var length = 1 + Math.random() * 1.5;
+                var opacity = Math.random();
+                var star = new buildStar(x, y, length, opacity);
+                stars.push(star);
+            }
+
+            // Chỉ chạy hiệu ứng ngôi sao nếu không ở chế độ day
+            if (!document.body.classList.contains('day')) {
+                intervalStars = setInterval(animStars, 1000 / starfps);
+                intervalFallingStar = setInterval(createFallingStar, 500);
+            }
+        });
+
+        function animStars() {
+            context.clearRect(0, 0, screenW, screenH);
+            $.each(stars, function() {
+                this.draw(context);
+            });
+        }
+
+        function buildStar(x, y, length, opacity) {
+            this.x = parseInt(x);
+            this.y = parseInt(y);
+            this.length = parseInt(length);
+            this.opacity = opacity;
+            this.factor = 1;
+            this.increment = Math.random() * 0.03;
+        }
+
+        buildStar.prototype.draw = function() {
+            context.rotate((Math.PI * 1 / 10));
+            context.save();
+            context.translate(this.x, this.y);
+
+            if (this.opacity > 1) {
+                this.factor = -1;
+            } else if (this.opacity <= 0) {
+                this.factor = 1;
+                this.x = Math.round(Math.random() * screenW);
+                this.y = Math.round(Math.random() * screenH);
+            }
+
+            this.opacity += this.increment * this.factor;
+
+            context.beginPath();
+            for (var i = 5; i--;) {
+                context.lineTo(0, this.length);
+                context.translate(0, this.length);
+                context.rotate((Math.PI * 2 / 10));
+                context.lineTo(0, -this.length);
+                context.translate(0, -this.length);
+                context.rotate(-(Math.PI * 6 / 10));
+            }
+            context.lineTo(0, this.length);
+            context.closePath();
+            context.fillStyle = "rgba(255, 255, 200, " + this.opacity + ")";
+            context.shadowBlur = 5;
+            context.shadowColor = '#fff';
+            context.fill();
+            context.restore();
+        }
+
+        // Hiệu ứng sao khi di chuột
+        document.addEventListener('mousemove', (e) => {
+            if (document.body.classList.contains('day')) return; // Không tạo sao khi ở chế độ day
+            if (Math.random() > 0.9) {
+                const star = document.createElement('div');
+                star.className = 'star-particle';
+                star.style.left = `${e.clientX}px`;
+                star.style.top = `${e.clientY}px`;
+                const size = Math.random() * 3 + 1;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                const darkColors = ['#fff', '#ffd700', '#ffeb3b', '#87ceeb'];
+                star.style.background = `radial-gradient(circle, ${darkColors[Math.floor(Math.random() * darkColors.length)]} 20%, transparent 80%)`;
+                star.style.animation = `moveStar 0.8s ease-out forwards`;
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 800);
+            }
+        });
+
+        // Hiệu ứng sao băng
+        function createFallingStar() {
+            if (document.body.classList.contains('day')) return; // Không tạo sao băng khi ở chế độ day
+            if (Math.random() > 0.5) {
+                const star = document.createElement('div');
+                star.className = 'falling-star';
+                star.style.left = `${Math.random() * 100}vw`;
+                star.style.top = `-${Math.random() * 10}px`;
+                const size = Math.random() * 2 + 1;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                const darkColors = ['#fff', '#ffd700', '#ffeb3b', '#87ceeb'];
+                star.style.background = `radial-gradient(circle, ${darkColors[Math.floor(Math.random() * darkColors.length)]} 20%, transparent 80%)`;
+                star.style.animation = `fall 3s linear forwards`;
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 3000);
+            }
+        }
+
+        // Toggle theme
+        $(document).ready(function() {
+            const themeToggleBtn = $('#theme-toggle');
+            const body = $('body');
+
+            if (localStorage.getItem('theme') === 'light') {
+                body.addClass('day');
+                themeToggleBtn.text('Dark Mode');
+            }
+
+            themeToggleBtn.click(function() {
+                body.toggleClass('day');
+                if (body.hasClass('day')) {
+                    localStorage.setItem('theme', 'light');
+                    themeToggleBtn.text('Dark Mode');
+                    // Dừng các hiệu ứng sao khi chuyển sang chế độ day
+                    clearInterval(intervalStars);
+                    clearInterval(intervalFallingStar);
+                    context.clearRect(0, 0, screenW, screenH); // Xóa canvas
+                    $('.star-particle, .falling-star').remove(); // Xóa các sao hiện có
+                } else {
+                    localStorage.setItem('theme', 'dark');
+                    themeToggleBtn.text('Light Mode');
+                    // Khởi động lại các hiệu ứng sao khi chuyển về dark mode
+                    intervalStars = setInterval(animStars, 1000 / starfps);
+                    intervalFallingStar = setInterval(createFallingStar, 500);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

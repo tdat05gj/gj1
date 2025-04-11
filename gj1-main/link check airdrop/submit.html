@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gửi Link</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+            color: #ffd700;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+            border: 2px solid #ffd700;
+            text-align: center;
+        }
+        h1 {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+        }
+        input {
+            padding: 10px;
+            width: 300px;
+            margin: 10px 0;
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            background: #333;
+            color: #ffd700;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #ffd700;
+            color: #1a1a1a;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #ffeb3b;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gửi Link</h1>
+        <input type="text" id="linkInput" placeholder="Nhập link của bạn (VD: https://google.com)">
+        <br>
+        <button onclick="submitLink()">Gửi</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Firebase configuration mã hóa Base64
+        const encodedFirebaseConfig = "eyJhcGlLZXkiOiJBSXphU3lCYTQxY01nTXQtaDA3Vm9HY2hudW42VzVVY204Q2ZLY28iLCJhdXRoRG9tYWluIjoiZ2phaXItNWE2ZWYuZmlyZWJhc2VhcHAuY29tIiwicHJvamVjdElkIjoiZ2phaXItNWE2ZWYiLCJzdG9yYWdlQnVja2V0IjoiZ2phaXItNWE2ZWYuZmlyZWJhc2VzdG9yYWdlLmFwcCIsIm1lc3NhZ2luZ1NlbmRlcklkIjoiOTA1NjEyMzM0MDYwIiwiYXBwSWQiOiIxOjkwNTYxMjMzNDA2MDp3ZWI6N2FiMDA2MDkxZTY2NDU2ODYyZTZjOSIsIm1lYXN1cmVtZW50SWQiOiJHLVhXQkU4VzJNRVYifQ==";
+
+        // Giải mã Base64 thành object
+        const firebaseConfig = JSON.parse(atob(encodedFirebaseConfig));
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Function to submit link
+        async function submitLink() {
+            const link = document.getElementById('linkInput').value.trim();
+            if (!link) {
+                alert('Vui lòng nhập link!');
+                return;
+            }
+
+            const timestamp = new Date().toLocaleString('vi-VN', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+
+            try {
+                await setDoc(doc(db, "links", "latest"), {
+                    link: link,
+                    timestamp: timestamp
+                });
+                alert('Link đã được gửi thành công!');
+                document.getElementById('linkInput').value = '';
+            } catch (error) {
+                alert('Lỗi khi gửi link: ' + error.message);
+            }
+        }
+
+        // Gán hàm vào global scope để button onclick hoạt động
+        window.submitLink = submitLink;
+    </script>
+</body>
+</html>

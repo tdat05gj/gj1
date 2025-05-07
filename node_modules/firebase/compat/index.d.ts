@@ -2046,7 +2046,6 @@ declare namespace firebase.remoteConfig {
    * Defines levels of Remote Config logging.
    */
   export type LogLevel = 'debug' | 'error' | 'silent';
-
   /**
    * This method provides two different checks:
    *
@@ -7370,10 +7369,7 @@ declare namespace firebase.database {
 
   interface ThenableReference
     extends firebase.database.Reference,
-      Pick<Promise<Reference>, 'then' | 'catch'> {
-    key: string;
-    parent: Reference;
-  }
+      Pick<Promise<Reference>, 'then' | 'catch'> {}
 
   /**
    * Logs debugging information to the console.

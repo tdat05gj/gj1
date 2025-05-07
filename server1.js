@@ -5,6 +5,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const fsConstants = require('fs').constants;
+require('dotenv').config();
 
 // Firebase configuration từ environment variables
 const encodedFirebaseConfig = process.env.FIREBASE_CONFIG;

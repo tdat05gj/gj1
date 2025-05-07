@@ -4,12 +4,12 @@ const { ethers } = require('ethers');
 const axios = require('axios');
 const crypto = require('crypto');
 const fs = require('fs').promises;
-require('dotenv').config();
+const fsConstants = require('fs').constants;
 
-// Firebase configuration từ .env
+// Firebase configuration từ environment variables
 const encodedFirebaseConfig = process.env.FIREBASE_CONFIG;
 if (!encodedFirebaseConfig) {
-    throw new Error('FIREBASE_CONFIG không được cấu hình trong .env');
+    throw new Error('FIREBASE_CONFIG không được cấu hình trong environment variables');
 }
 
 // Giải mã Base64 thành object
@@ -37,6 +37,7 @@ const sepoliaProvider = new ethers.JsonRpcProvider('https://eth-sepolia.g.alchem
 // Hàm giải mã private key từ file
 async function decryptKey(filePath, encryptionKey) {
     try {
+        await fs.access(filePath, fsConstants.R_OK);
         const content = await fs.readFile(filePath, 'utf8');
         const [iv, encryptedKey, authTag] = content.split(':');
         const keyBuffer = Buffer.from(encryptionKey, 'hex');
@@ -54,7 +55,7 @@ async function decryptKey(filePath, encryptionKey) {
 // Khởi tạo ví owner
 const encryptionKey = process.env.ENCRYPTION_KEY;
 if (!encryptionKey) {
-    throw new Error('ENCRYPTION_KEY không được cấu hình trong .env');
+    throw new Error('ENCRYPTION_KEY không được cấu hình trong environment variables');
 }
 
 let bscWallet, sepoliaWallet, contract;
@@ -75,7 +76,7 @@ async function withRetry(fn) {
     try {
         return await fn();
     } catch (error) {
-        throw error; // Không thử lại, ném lỗi ngay
+        throw error;
     }
 }
 
@@ -91,7 +92,7 @@ async function getBNBPrice() {
         return price;
     } catch (error) {
         console.error('Lỗi lấy giá BNB/USDT:', error.message);
-        return 597.80; // Giá mặc định
+        return 597.80;
     }
 }
 
@@ -117,7 +118,7 @@ async function updateGJBalance(userAddress, ethAmount) {
             throw new Error('Số ETH Sepolia không hợp lệ');
         }
 
-        const gjAmount = ethAmount; // 1 ETH Sepolia = 1 GJ
+        const gjAmount = ethAmount;
         console.log(`Tính GJ cho ${userAddress}: ${gjAmount} GJ (ETH: ${ethAmount})`);
         const balanceRef = doc(db, 'userBalances', userAddress);
         const balanceDoc = await getDoc(balanceRef);
@@ -154,9 +155,9 @@ async function processPurchases() {
             return;
         }
 
-        const bnbPriceUsdt = await getBNBPrice(); // Lấy giá BNB/USDT
-        const ethPerUsdt = 4; // 1 USDT = 4 ETH
-        const ethPerBnb = bnbPriceUsdt * ethPerUsdt; // Số ETH tương ứng 1 BNB
+        const bnbPriceUsdt = await getBNBPrice();
+        const ethPerUsdt = 4;
+        const ethPerBnb = bnbPriceUsdt * ethPerUsdt;
 
         for (const doc of querySnapshot.docs) {
             const data = doc.data();
@@ -164,13 +165,11 @@ async function processPurchases() {
 
             console.log(`Bắt đầu xử lý ${txHash}...`);
 
-            // Kiểm tra trùng lặp giao dịch
             if (await isTransactionProcessed(txHash)) {
                 console.log(`Bỏ qua: ${txHash} đã xử lý`);
                 continue;
             }
 
-            // Kiểm tra amount hợp lệ
             if (!amount || isNaN(amount) || amount <= 0) {
                 console.log(`Lỗi: ${txHash} - Số BNB không hợp lệ`);
                 await updateDoc(doc.ref, {
@@ -182,19 +181,16 @@ async function processPurchases() {
             }
 
             try {
-                // Ghi nhận BNB trên BSC Mainnet
                 const bnbAmount = ethers.parseEther(amount.toString());
                 const bscTx = await withRetry(() => contract.recordPurchase(userAddress, bnbAmount));
                 await bscTx.wait();
 
-                // Tính số ETH Sepolia
                 if (isNaN(ethPerBnb) || ethPerBnb <= 0) {
                     throw new Error('Tỷ giá ETH/BNB không hợp lệ');
                 }
                 const ethToSend = bnbAmount * BigInt(Math.floor(ethPerBnb * 1e18)) / BigInt(1e18);
                 const ethAmount = parseFloat(ethers.formatEther(ethToSend));
 
-                // Kiểm tra số dư ví owner trên Sepolia
                 const balance = await sepoliaProvider.getBalance(sepoliaWallet.address);
                 const feeData = await withRetry(() => sepoliaProvider.getFeeData());
                 const gasPrice = feeData.gasPrice;
@@ -205,7 +201,6 @@ async function processPurchases() {
                     throw new Error('Số dư Sepolia không đủ');
                 }
 
-                // Gửi ETH Sepolia
                 const sepoliaTx = await withRetry(() =>
                     sepoliaWallet.sendTransaction({
                         to: userAddress,
@@ -216,10 +211,8 @@ async function processPurchases() {
                 );
                 await sepoliaTx.wait();
 
-                // Cập nhật số dư GJ
                 await updateGJBalance(userAddress, ethAmount);
 
-                // Cập nhật trạng thái trong Firestore
                 await updateDoc(doc.ref, {
                     processed: true,
                     bscTxHash: bscTx.hash,

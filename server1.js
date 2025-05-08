@@ -101,24 +101,27 @@ async function getBNBPrice() {
     };
 
     const tryCoinMarketCap = async () => {
-        const apiKey = process.env.COINMARKETCAP_API_KEY
-        if (!apiKey) {
-            throw new Error('COINMARKETCAP_API_KEY không được cấu hình trong .env');
+        const apiKey = process.env.COINMARKETCAP_API_KEY || '';
+        try {
+            const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest', {
+                headers: { 'X-CMC_PRO_API_KEY': apiKey },
+                params: { symbol: 'BNB', convert: 'USDT' },
+                timeout: 3000 // Timeout 3 giây
+            });
+            console.log(`Phản hồi CoinMarketCap (Status: ${response.status}):`, response.data);
+            const price = response.data.data.BNB?.quote?.USDT?.price;
+            if (!price || isNaN(price) || price <= 0) {
+                throw new Error(`Giá BNB/USDT không hợp lệ từ CoinMarketCap: ${JSON.stringify(response.data)}`);
+            }
+            console.log(`BNB/USDT từ CoinMarketCap: ${price}`);
+            return price;
+        } catch (error) {
+            if (error.response) {
+                throw new Error(`Lỗi HTTP từ CoinMarketCap: Status ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
+            }
+            throw error;
         }
-        const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest', {
-            headers: { 'X-CMC_PRO_API_KEY': apiKey },
-            params: { symbol: 'BNB', convert: 'USDT' },
-            timeout: 5000 // Timeout 5 giây
-        });
-        console.log(`Phản hồi CoinMarketCap (Status: ${response.status}):`, response.data);
-        const price = response.data.data.BNB?.quote?.USDT?.price;
-        if (!price || isNaN(price) || price <= 0) {
-            throw new Error(`Giá BNB/USDT không hợp lệ từ CoinMarketCap: ${JSON.stringify(response.data)}`);
-        }
-        console.log(`BNB/USDT từ CoinMarketCap: ${price}`);
-        return price;
     };
-
     try {
         return await withRetry(tryBinance);
     } catch (error) {

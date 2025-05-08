@@ -4,8 +4,6 @@ const { getFirestore, collection, getDocs, query, where, updateDoc, getDoc, setD
 const { ethers } = require('ethers');
 const axios = require('axios');
 const crypto = require('crypto');
-const fs = require('fs').promises;
-const fsConstants = require('fs').constants;
 require('dotenv').config();
 
 const app = express();
@@ -53,12 +51,16 @@ const contractAbi = [
 // Sepolia provider
 const sepoliaProvider = new ethers.JsonRpcProvider('https://eth-sepolia.g.alchemy.com/v2/k9hMLc6ueYHBaWa7BYQsXjNd0NGZaubF');
 
-// Hàm giải mã private key từ file
-async function decryptKey(filePath, encryptionKey) {
+// Hàm giải mã private key từ chuỗi mã hóa
+function decryptKey(encryptedContent, encryptionKey) {
     try {
-        await fs.access(filePath, fsConstants.R_OK);
-        const content = await fs.readFile(filePath, 'utf8');
-        const [iv, encryptedKey, authTag] = content.split(':');
+        if (!encryptedContent.includes(':')) {
+            throw new Error('Định dạng chuỗi mã hóa không hợp lệ, cần iv:encryptedKey:authTag');
+        }
+        const [iv, encryptedKey, authTag] = encryptedContent.split(':');
+        if (!iv || !encryptedKey || !authTag) {
+            throw new Error('Dữ liệu chuỗi mã hóa không đầy đủ');
+        }
         const keyBuffer = Buffer.from(encryptionKey, 'hex');
         const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, Buffer.from(iv, 'hex'));
         decipher.setAuthTag(Buffer.from(authTag, 'hex'));
@@ -67,20 +69,21 @@ async function decryptKey(filePath, encryptionKey) {
         console.log(`Private key giải mã tại: ${new Date().toISOString()}`);
         return decrypted;
     } catch (error) {
-        throw new Error('Giải mã private key thất bại: ' + error.message);
+        throw new Error(`Giải mã private key thất bại: ${error.message}`);
     }
 }
 
 // Khởi tạo ví owner
 const encryptionKey = process.env.ENCRYPTION_KEY;
-if (!encryptionKey) {
-    throw new Error('ENCRYPTION_KEY không được cấu hình trong environment variables');
+const encryptedPrivateKey = process.env.ENCRYPTED_PRIVATE_KEY;
+if (!encryptionKey || !encryptedPrivateKey) {
+    throw new Error('ENCRYPTION_KEY hoặc ENCRYPTED_PRIVATE_KEY không được cấu hình trong environment variables');
 }
 
 let bscWallet, sepoliaWallet, contract;
 (async () => {
     try {
-        const privateKey = await decryptKey('./key.enc', encryptionKey);
+        const privateKey = decryptKey(encryptedPrivateKey, encryptionKey);
         bscWallet = new ethers.Wallet(privateKey, bscProvider);
         sepoliaWallet = new ethers.Wallet(privateKey, sepoliaProvider);
         contract = new ethers.Contract(contractAddress, contractAbi, bscWallet);

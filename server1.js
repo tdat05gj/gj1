@@ -3,7 +3,6 @@ const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs, query, where, updateDoc, getDoc, setDoc, doc } = require('firebase/firestore');
 const { ethers } = require('ethers');
 const axios = require('axios');
-const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -51,47 +50,25 @@ const contractAbi = [
 // Sepolia provider
 const sepoliaProvider = new ethers.JsonRpcProvider('https://eth-sepolia.g.alchemy.com/v2/k9hMLc6ueYHBaWa7BYQsXjNd0NGZaubF');
 
-// Hàm giải mã private key từ chuỗi mã hóa
-function decryptKey(encryptedContent, encryptionKey) {
-    try {
-        if (!encryptedContent.includes(':')) {
-            throw new Error('Định dạng chuỗi mã hóa không hợp lệ, cần iv:encryptedKey:authTag');
-        }
-        const [iv, encryptedKey, authTag] = encryptedContent.split(':');
-        if (!iv || !encryptedKey || !authTag) {
-            throw new Error('Dữ liệu chuỗi mã hóa không đầy đủ');
-        }
-        const keyBuffer = Buffer.from(encryptionKey, 'hex');
-        const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, Buffer.from(iv, 'hex'));
-        decipher.setAuthTag(Buffer.from(authTag, 'hex'));
-        let decrypted = decipher.update(Buffer.from(encryptedKey, 'hex'), null, 'utf8');
-        decrypted += decipher.final('utf8');
-        console.log(`Private key giải mã tại: ${new Date().toISOString()}`);
-        return decrypted;
-    } catch (error) {
-        throw new Error(`Giải mã private key thất bại: ${error.message}`);
-    }
-}
-
 // Khởi tạo ví owner
-const encryptionKey = process.env.ENCRYPTION_KEY;
-const encryptedPrivateKey = process.env.ENCRYPTED_PRIVATE_KEY;
-if (!encryptionKey || !encryptedPrivateKey) {
-    throw new Error('ENCRYPTION_KEY hoặc ENCRYPTED_PRIVATE_KEY không được cấu hình trong environment variables');
+const privateKey = process.env.ENCRYPTION_KEY;
+if (!privateKey) {
+    throw new Error('ENCRYPTION_KEY không được cấu hình trong environment variables');
+}
+if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
+    throw new Error('ENCRYPTION_KEY không phải private key hợp lệ (cần dạng hex 64 ký tự với 0x)');
 }
 
 let bscWallet, sepoliaWallet, contract;
-(async () => {
-    try {
-        const privateKey = decryptKey(encryptedPrivateKey, encryptionKey);
-        bscWallet = new ethers.Wallet(privateKey, bscProvider);
-        sepoliaWallet = new ethers.Wallet(privateKey, sepoliaProvider);
-        contract = new ethers.Contract(contractAddress, contractAbi, bscWallet);
-    } catch (error) {
-        console.error('Lỗi khởi tạo ví:', error.message);
-        process.exit(1);
-    }
-})();
+try {
+    bscWallet = new ethers.Wallet(privateKey, bscProvider);
+    sepoliaWallet = new ethers.Wallet(privateKey, sepoliaProvider);
+    contract = new ethers.Contract(contractAddress, contractAbi, bscWallet);
+    console.log(`Ví khởi tạo thành công tại: ${new Date().toISOString()}`);
+} catch (error) {
+    console.error('Lỗi khởi tạo ví:', error.message);
+    process.exit(1);
+}
 
 // Hàm retry với timeout (chỉ thử 1 lần)
 async function withRetry(fn) {

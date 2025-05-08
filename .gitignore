@@ -1,5 +1,5 @@
 .env
-secure/key.enc
+key.enc
 access.log
 node_modules/
 *.log

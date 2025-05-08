@@ -80,7 +80,7 @@ if (!encryptionKey) {
 let bscWallet, sepoliaWallet, contract;
 (async () => {
     try {
-        const privateKey = await decryptKey('./secure/key.enc', encryptionKey);
+        const privateKey = await decryptKey('./key.enc', encryptionKey);
         bscWallet = new ethers.Wallet(privateKey, bscProvider);
         sepoliaWallet = new ethers.Wallet(privateKey, sepoliaProvider);
         contract = new ethers.Contract(contractAddress, contractAbi, bscWallet);

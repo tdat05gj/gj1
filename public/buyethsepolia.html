@@ -50,7 +50,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // Lấy cấu hình từ endpoint
+      
         async function getFirebaseConfig() {
             try {
                 const response = await fetch('/firebase-config');
@@ -63,12 +63,12 @@
             }
         }
 
-        // Khởi tạo Firebase
+        
         const firebaseConfig = await getFirebaseConfig();
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Thông tin contract
+        
         const contractAddress = "0x458Ca89eDAd0aDc829694BfA51565bA67AabeF61";
         const ethPerUsd = 4;
         let bnbPriceUsd = 0;

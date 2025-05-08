@@ -7,7 +7,7 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Middleware để đảm bảo luôn trả về JSON
+
 app.use((req, res, next) => {
     res.setHeader('Content-Type', 'application/json');
     next();
@@ -26,7 +26,7 @@ const createWallet = () => {
     };
 };
 
-// Tạo một ví với đuôi tùy chỉnh
+
 app.post('/generate', async (req, res) => {
     try {
         const desiredEnding = req.body.ending;
@@ -56,7 +56,7 @@ app.post('/generate', async (req, res) => {
     }
 });
 
-// Tạo nhiều ví ngẫu nhiên
+
 app.post('/generate-multiple', async (req, res) => {
     try {
         const numWallets = req.body.numWallets;
@@ -83,7 +83,7 @@ app.post('/generate-multiple', async (req, res) => {
     }
 });
 
-// Xử lý lỗi không tìm thấy route
+
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'Route not found' });
 });

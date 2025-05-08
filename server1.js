@@ -7,12 +7,12 @@ require('dotenv').config();
 
 const app = express();
 
-// Phục vụ tệp tĩnh từ thư mục public
+
 app.use(express.static('public'));
 
-// Endpoint trả về cấu hình Firebase
+
 app.get('/firebase-config', (req, res) => {
-    res.set('Access-Control-Allow-Origin', '*'); // Cho phép CORS
+    res.set('Access-Control-Allow-Origin', '*'); 
     try {
         const firebaseConfig = JSON.parse(Buffer.from(process.env.FIREBASE_CONFIG, 'base64').toString('utf8'));
         res.json(firebaseConfig);
@@ -22,20 +22,20 @@ app.get('/firebase-config', (req, res) => {
     }
 });
 
-// Firebase configuration từ environment variables
+
 const encodedFirebaseConfig = process.env.FIREBASE_CONFIG;
 if (!encodedFirebaseConfig) {
     throw new Error('FIREBASE_CONFIG không được cấu hình trong environment variables');
 }
 
-// Giải mã Base64 thành object
+
 const firebaseConfig = JSON.parse(Buffer.from(encodedFirebaseConfig, 'base64').toString('utf8'));
 
-// Initialize Firebase
+
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
-// BSC Mainnet provider và contract
+
 const bscProvider = new ethers.JsonRpcProvider('https://bsc-dataseed.binance.org/');
 const contractAddress = '0x458Ca89eDAd0aDc829694BfA51565bA67AabeF61';
 const contractAbi = [
@@ -47,10 +47,10 @@ const contractAbi = [
     "event BNBWithdrawn(address indexed to, uint256 amount)"
 ];
 
-// Sepolia provider
+
 const sepoliaProvider = new ethers.JsonRpcProvider('https://eth-sepolia.g.alchemy.com/v2/k9hMLc6ueYHBaWa7BYQsXjNd0NGZaubF');
 
-// Khởi tạo ví owner
+
 const privateKey = process.env.ENCRYPTION_KEY;
 if (!privateKey) {
     throw new Error('ENCRYPTION_KEY không được cấu hình trong environment variables');
@@ -70,7 +70,7 @@ try {
     process.exit(1);
 }
 
-// Hàm retry với timeout (chỉ thử 1 lần)
+
 async function withRetry(fn) {
     try {
         return await fn();
@@ -79,7 +79,7 @@ async function withRetry(fn) {
     }
 }
 
-// Lấy giá BNB/USDT từ CoinGecko API
+
 async function getBNBPrice() {
     try {
         const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usdt');
@@ -95,7 +95,7 @@ async function getBNBPrice() {
     }
 }
 
-// Kiểm tra trùng lặp giao dịch
+
 async function isTransactionProcessed(txHash) {
     try {
         const q = query(collection(db, 'purchases'), where('txHash', '==', txHash), where('processed', '==', true));
@@ -107,7 +107,7 @@ async function isTransactionProcessed(txHash) {
     }
 }
 
-// Cập nhật số dư GJ
+
 async function updateGJBalance(userAddress, ethAmount) {
     try {
         if (!userAddress || !ethers.utils.isAddress(userAddress)) {
@@ -142,7 +142,7 @@ async function updateGJBalance(userAddress, ethAmount) {
     }
 }
 
-// Hàm xử lý giao dịch
+
 async function processPurchases() {
     try {
         const purchasesRef = collection(db, 'purchases');
@@ -235,10 +235,10 @@ async function processPurchases() {
     }
 }
 
-// Chạy xử lý giao dịch mỗi 1 phút
+
 setInterval(processPurchases, 1 * 60 * 1000);
 processPurchases();
 
-// Khởi động server
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Server running on port ${port}`));

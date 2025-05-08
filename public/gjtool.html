@@ -37,7 +37,7 @@
         <div id="custom" class="tab-content active">
             <label for="ending">Điền đuôi ví mong muốn:</label>
             <input type="text" id="ending" placeholder="e.g., 666666">
-            <div class="note">Càng dài càng lâu, 6 số là tối ưu (tùy nhân phẩm).</div>
+            <div class="note">Càng dài càng lâu, 6 số là tối ưu và tùy nhân phẩm nữa :).</div>
             <button class="btn generate-btn" id="generateCustomBtn">Tạo Ví</button>
             <button class="btn stop-btn" id="stopCustomBtn">Dừng</button>
             <button class="btn new-btn" id="newCustomBtn">Tạo mới</button>
@@ -190,7 +190,7 @@
     </script>
 
     <script>
-        // Canvas cho nền ngôi sao
+       
         var canvas;
         var context;
         var screenH;
@@ -218,7 +218,7 @@
                 stars.push(star);
             }
 
-            // Chỉ chạy hiệu ứng ngôi sao nếu không ở chế độ day
+        
             if (!document.body.classList.contains('day')) {
                 intervalStars = setInterval(animStars, 1000 / starfps);
                 intervalFallingStar = setInterval(createFallingStar, 500);
@@ -274,9 +274,9 @@
             context.restore();
         }
 
-        // Hiệu ứng sao khi di chuột
+      
         document.addEventListener('mousemove', (e) => {
-            if (document.body.classList.contains('day')) return; // Không tạo sao khi ở chế độ day
+            if (document.body.classList.contains('day')) return;
             if (Math.random() > 0.9) {
                 const star = document.createElement('div');
                 star.className = 'star-particle';
@@ -293,9 +293,9 @@
             }
         });
 
-        // Hiệu ứng sao băng
+      
         function createFallingStar() {
-            if (document.body.classList.contains('day')) return; // Không tạo sao băng khi ở chế độ day
+            if (document.body.classList.contains('day')) return; 
             if (Math.random() > 0.5) {
                 const star = document.createElement('div');
                 star.className = 'falling-star';
@@ -312,7 +312,7 @@
             }
         }
 
-        // Toggle theme
+       
         $(document).ready(function() {
             const themeToggleBtn = $('#theme-toggle');
             const body = $('body');
@@ -327,15 +327,15 @@
                 if (body.hasClass('day')) {
                     localStorage.setItem('theme', 'light');
                     themeToggleBtn.text('Dark Mode');
-                    // Dừng các hiệu ứng sao khi chuyển sang chế độ day
+                   
                     clearInterval(intervalStars);
                     clearInterval(intervalFallingStar);
-                    context.clearRect(0, 0, screenW, screenH); // Xóa canvas
-                    $('.star-particle, .falling-star').remove(); // Xóa các sao hiện có
+                    context.clearRect(0, 0, screenW, screenH); 
+                    $('.star-particle, .falling-star').remove(); 
                 } else {
                     localStorage.setItem('theme', 'dark');
                     themeToggleBtn.text('Light Mode');
-                    // Khởi động lại các hiệu ứng sao khi chuyển về dark mode
+                    
                     intervalStars = setInterval(animStars, 1000 / starfps);
                     intervalFallingStar = setInterval(createFallingStar, 500);
                 }

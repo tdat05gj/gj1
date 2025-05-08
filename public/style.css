@@ -17,23 +17,23 @@ body {
 }
 
 body.day {
-    background: #ffdb01; /* Light mode - màu của mặt trời */
+    background: #ffdb01; 
     color: #1a1a1a;
 }
 
-/* Canvas cho nền ngôi sao */
+
 #deepspace {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: -2; /* Đặt sau nội dung chính */
+    z-index: -2; 
 }
 
-/* Mặt trăng ở góc phải trên, đẩy sang phải */
+
 .moon {
     position: fixed;
     top: 10px;
-    right: -50px; /* Đẩy sang phải, nhưng vẫn hiển thị một phần trên màn hình */
+    right: -50px; 
     width: 150px;
     height: 150px;
     border-radius: 50%;
@@ -42,21 +42,21 @@ body.day {
     animation: move 5s infinite;
     opacity: 0.8;
     pointer-events: none;
-    z-index: -1; /* Đặt trước canvas nhưng sau nội dung chính */
+    z-index: -1; 
     transition: background 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Chuyển sang mặt trời khi ở chế độ day */
+
 body.day .moon {
-    background: url('https://cdn-icons-png.flaticon.com/512/869/869869.png') no-repeat center/contain; /* Mặt trời */
+    background: url('https://cdn-icons-png.flaticon.com/512/869/869869.png') no-repeat center/contain; 
     width: 200px;
     height: 200px;
     opacity: 0.6;
-    right: -70px; /* Đẩy thêm một chút so với mặt trăng */
-    box-shadow: none; /* Bỏ hiệu ứng bóng của mặt trăng */
+    right: -70px; 
+    box-shadow: none; 
 }
 
-/* Các hố trên mặt trăng */
+
 .crat {
     position: absolute;
     top: 80px;
@@ -107,7 +107,7 @@ body.day .moon {
     box-shadow: inset 1px 7px 7px 1px rgb(204, 183, 204);
 }
 
-/* Ẩn các hố khi ở chế độ day (mặt trời) */
+
 body.day .crat,
 body.day .crat2,
 body.day .crat3,

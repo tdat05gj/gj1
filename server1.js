@@ -12,17 +12,17 @@ app.use(express.static('public'));
 app.get('/firebase-config', (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
     try {
-        const firebaseConfig = JSON.parse(Buffer.from(process.env.FIREBASE_CONFIG, 'base64').toString('utf8'));
+        const firebaseConfig = JSON.parse(Buffer.from(process.env.GJ_TEAM, 'base64').toString('utf8'));
         res.json(firebaseConfig);
     } catch (error) {
-        console.error('Lỗi trả về cấu hình Firebase:', error.message);
-        res.status(500).json({ error: 'Không thể lấy cấu hình Firebase' });
+        console.error('Lỗi:', error.message);
+        res.status(500).json({ error: 'Không' });
     }
 });
 
-const encodedFirebaseConfig = process.env.FIREBASE_CONFIG;
+const encodedFirebaseConfig = process.env.GJ_TEAM;
 if (!encodedFirebaseConfig) {
-    throw new Error('FIREBASE_CONFIG không được cấu hình trong environment variables');
+    throw new Error('!');
 }
 
 const firebaseConfig = JSON.parse(Buffer.from(encodedFirebaseConfig, 'base64').toString('utf8'));
@@ -101,7 +101,7 @@ async function getBNBPrice() {
     };
 
     const tryCoinMarketCap = async () => {
-        const apiKey = process.env.COINMARKETCAP_API_KEY;
+        const apiKey = process.env.COINMARKETCAP_API_KEY
         if (!apiKey) {
             throw new Error('COINMARKETCAP_API_KEY không được cấu hình trong .env');
         }

@@ -20,7 +20,7 @@ app.get('/firebase-config', (req, res) => {
     }
 });
 
-const encodedFirebaseConfig = process.env.GJ_TEAM;
+const encodedFirebaseConfig = process.env.FIREBASE_CONFIG;
 if (!encodedFirebaseConfig) {
     throw new Error('FIREBASE_CONFIG không được cấu hình trong environment variables');
 }

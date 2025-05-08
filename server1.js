@@ -7,12 +7,10 @@ require('dotenv').config();
 
 const app = express();
 
-
 app.use(express.static('public'));
 
-
 app.get('/firebase-config', (req, res) => {
-    res.set('Access-Control-Allow-Origin', '*'); 
+    res.set('Access-Control-Allow-Origin', '*');
     try {
         const firebaseConfig = JSON.parse(Buffer.from(process.env.FIREBASE_CONFIG, 'base64').toString('utf8'));
         res.json(firebaseConfig);
@@ -22,19 +20,15 @@ app.get('/firebase-config', (req, res) => {
     }
 });
 
-
 const encodedFirebaseConfig = process.env.FIREBASE_CONFIG;
 if (!encodedFirebaseConfig) {
     throw new Error('FIREBASE_CONFIG không được cấu hình trong environment variables');
 }
 
-
 const firebaseConfig = JSON.parse(Buffer.from(encodedFirebaseConfig, 'base64').toString('utf8'));
-
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
-
 
 const bscProvider = new ethers.JsonRpcProvider('https://bsc-dataseed.binance.org/');
 const contractAddress = '0x458Ca89eDAd0aDc829694BfA51565bA67AabeF61';
@@ -47,9 +41,7 @@ const contractAbi = [
     "event BNBWithdrawn(address indexed to, uint256 amount)"
 ];
 
-
 const sepoliaProvider = new ethers.JsonRpcProvider('https://eth-sepolia.g.alchemy.com/v2/k9hMLc6ueYHBaWa7BYQsXjNd0NGZaubF');
-
 
 const privateKey = process.env.ENCRYPTION_KEY;
 if (!privateKey) {
@@ -70,47 +62,61 @@ try {
     process.exit(1);
 }
 
-
-async function withRetry(fn) {
-    try {
-        return await fn();
-    } catch (error) {
-        throw error;
+async function withRetry(fn, retries = 3, delay = 3000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            if (i === retries - 1) throw error;
+            console.warn(`Thử lại (${i + 1}/${retries}) sau ${delay}ms: ${error.message}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
     }
 }
-
 
 async function getBNBPrice() {
-    try {
-        const response = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usdt');
-        const price = response.data.binancecoin.usdt;
-        if (!price || isNaN(price) || price <= 0) {
-            throw new Error('Giá BNB/USDT không hợp lệ');
+    const tryBinance = async () => {
+        const response = await axios.get('https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT', {
+            headers: { 'User-Agent': 'gjteam-org/1.0 (Node.js)' }
+        });
+        console.log(`Phản hồi Binance (Status: ${response.status}):`, response.data);
+        if (!response.data || !response.data.price) {
+            throw new Error(`Phản hồi Binance không có trường price: ${JSON.stringify(response.data)}`);
         }
-        console.log(`BNB/USDT: ${price}`);
+        const price = parseFloat(response.data.price);
+        if (!price || isNaN(price) || price <= 0) {
+            throw new Error(`Giá BNB/USDT không hợp lệ từ Binance: ${response.data.price}`);
+        }
+        console.log(`BNB/USDT từ Binance: ${price}`);
         return price;
+    };
+
+    try {
+        return await withRetry(tryBinance);
     } catch (error) {
-        console.error('Lỗi lấy giá BNB/USDT:', error.message);
-        return 597.80;
+        console.error('Lỗi lấy giá từ Binance:', error.message);
+        console.warn('Sử dụng giá BNB/USDT mặc định: 597.80');
+        return 597.80; // Giá dự phòng
     }
 }
-
 
 async function isTransactionProcessed(txHash) {
     try {
-        const q = query(collection(db, 'purchases'), where('txHash', '==', txHash), where('processed', '==', true));
+        const q = query(collection(db, 'purchases'), where('txHash', '==', txHash));
         const querySnapshot = await getDocs(q);
-        return !querySnapshot.empty;
+        if (querySnapshot.empty) return false;
+        const doc = querySnapshot.docs[0];
+        const data = doc.data();
+        return data.processed === true || data.processing === true;
     } catch (error) {
         console.error(`Lỗi kiểm tra txHash ${txHash}:`, error.message);
         return false;
     }
 }
 
-
 async function updateGJBalance(userAddress, ethAmount) {
     try {
-        if (!userAddress || !ethers.utils.isAddress(userAddress)) {
+        if (!userAddress || !ethers.isAddress(userAddress)) {
             throw new Error('Địa chỉ ví không hợp lệ');
         }
         if (isNaN(ethAmount) || ethAmount <= 0) {
@@ -139,11 +145,19 @@ async function updateGJBalance(userAddress, ethAmount) {
         console.log(`GJ cập nhật: ${userAddress} - ${newBalance} GJ`);
     } catch (error) {
         console.error(`Lỗi cập nhật GJ cho ${userAddress}:`, error.message);
+        throw error;
     }
 }
 
+let isProcessing = false;
 
 async function processPurchases() {
+    if (isProcessing) {
+        console.log('Đang xử lý, bỏ qua lần gọi mới');
+        return;
+    }
+
+    isProcessing = true;
     try {
         const purchasesRef = collection(db, 'purchases');
         const q = query(purchasesRef, where('processed', '==', false));
@@ -158,21 +172,29 @@ async function processPurchases() {
         const ethPerUsdt = 4;
         const ethPerBnb = bnbPriceUsdt * ethPerUsdt;
 
-        for (const doc of querySnapshot.docs) {
-            const data = doc.data();
+        for (const purchaseDoc of querySnapshot.docs) {
+            const data = purchaseDoc.data();
             const { userAddress, amount, txHash } = data;
 
-            console.log(`Bắt đầu xử lý ${txHash}...`);
+            console.log(`Kiểm tra ${txHash}...`);
 
             if (await isTransactionProcessed(txHash)) {
-                console.log(`Bỏ qua: ${txHash} đã xử lý`);
+                console.log(`Bỏ qua: ${txHash} đã xử lý hoặc đang xử lý`);
                 continue;
             }
 
+            await updateDoc(purchaseDoc.ref, {
+                processing: true,
+                updatedAt: new Date().toISOString()
+            });
+
+            console.log(`Bắt đầu xử lý ${txHash}...`);
+
             if (!amount || isNaN(amount) || amount <= 0) {
-                console.log(`Lỗi: ${txHash} - Số BNB không hợp lệ`);
-                await updateDoc(doc.ref, {
+                console.error(`Lỗi: ${txHash} - Số BNB không hợp lệ`);
+                await updateDoc(purchaseDoc.ref, {
                     processed: true,
+                    processing: false,
                     error: 'Số BNB không hợp lệ',
                     updatedAt: new Date().toISOString()
                 });
@@ -182,7 +204,11 @@ async function processPurchases() {
             try {
                 const bnbAmount = ethers.parseEther(amount.toString());
                 const bscTx = await withRetry(() => contract.recordPurchase(userAddress, bnbAmount));
-                await bscTx.wait();
+                const bscReceipt = await bscTx.wait();
+                if (bscReceipt.status !== 1) {
+                    throw new Error('Giao dịch BSC thất bại');
+                }
+                console.log(`Ghi nhận giao dịch BSC: ${bscTx.hash}`);
 
                 if (isNaN(ethPerBnb) || ethPerBnb <= 0) {
                     throw new Error('Tỷ giá ETH/BNB không hợp lệ');
@@ -208,12 +234,17 @@ async function processPurchases() {
                         gasPrice: gasPrice
                     })
                 );
-                await sepoliaTx.wait();
+                const sepoliaReceipt = await sepoliaTx.wait();
+                if (sepoliaReceipt.status !== 1) {
+                    throw new Error('Giao dịch Sepolia thất bại');
+                }
+                console.log(`Gửi ETH trên Sepolia: ${sepoliaTx.hash}`);
 
                 await updateGJBalance(userAddress, ethAmount);
 
-                await updateDoc(doc.ref, {
+                await updateDoc(purchaseDoc.ref, {
                     processed: true,
+                    processing: false,
                     bscTxHash: bscTx.hash,
                     sepoliaTxHash: sepoliaTx.hash,
                     ethAmount: ethAmount,
@@ -222,9 +253,10 @@ async function processPurchases() {
 
                 console.log(`Thành công: ${txHash}`);
             } catch (error) {
-                console.log(`Lỗi: ${txHash} - ${error.message}`);
-                await updateDoc(doc.ref, {
-                    processed: true,
+                console.error(`Lỗi xử lý ${txHash}: ${error.message}`);
+                await updateDoc(purchaseDoc.ref, {
+                    processed: false,
+                    processing: false,
                     error: error.message,
                     updatedAt: new Date().toISOString()
                 });
@@ -232,13 +264,18 @@ async function processPurchases() {
         }
     } catch (error) {
         console.error('Lỗi hệ thống:', error.message);
+        if (error.message.includes('The query requires an index')) {
+            console.warn('Yêu cầu index cho collection "purchases".');
+            console.warn('Tạo index thủ công tại: https://console.firebase.google.com/project/gjproject1-37e29/firestore/indexes');
+            console.warn('Fields: processed (Ascending), txHash (Ascending)');
+        }
+    } finally {
+        isProcessing = false;
     }
 }
 
-
 setInterval(processPurchases, 1 * 60 * 1000);
 processPurchases();
-
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Server running on port ${port}`));

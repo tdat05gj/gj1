@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GJHOME</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="./gj.jfif">
+    <link rel="preload" href="./qrdonate.jpg" as="image">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <canvas id="deepspace"></canvas> 
+    <div class="moon">
+        <div class="crat crat1"></div>
+        <div class="crat crat2"></div>
+        <div class="crat crat3"></div>
+        <div class="crat crat4"></div>
+        <div class="crat crat5"></div>
+        <div class="crat crat6"></div>
+    </div>
+
+    <nav class="nav-menu">
+        <a href="index.html" class="nav-btn active ">Home</a>
+       
+        <a href="gjtool.html" class="nav-btn">Wallet Tools</a>
+        <a href="buyethsepolia.html" class="nav-btn">Buy ETH Sepolia</a>
+        <button id="theme-toggle" class="nav-btn">Thay đổi nền</button>
+    </nav>
+
+    <div class="container">
+        <h1>GJHOME</h1>
+        <p class="intro-text">Chào mừng bạn đến với GJTOOL - Công cụ tối ưu cho crypto!</p>
+
+        <div class="section">
+            <h2>Giới thiệu</h2>
+            <p>GJTOOL hỗ trợ tạo ví tùy chỉnh và nhiều tính năng khác. Giao diện thân thiện, tính năng mạnh mẽ, mang đến trải nghiệm tốt nhất cho người dùng.</p>
+        </div>
+
+        <div class="donate-section">
+            <h3>Support Us</h3>
+            <p>Donate để nâng cấp máy chủ và phát triển thêm tính năng!</p>
+            <img src="./qrdonate.jpg" alt="Donate QR Code" loading="lazy">
+            <div class="social-links">
+                <h4>Follow Us</h4>
+                <div>
+                    <a href="https://github.com/tdat05gj" target="_blank" class="social-btn github">
+                        <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" alt="GitHub" loading="lazy"> GitHub
+                    </a>
+                    <a href="https://discord.gg/UJmwvgvA2e" target="_blank" class="social-btn discord">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111370.png" alt="Discord" loading="lazy"> Discord
+                    </a>
+                    <a href="https://x.com/tdat_gj" target="_blank" class="social-btn x">
+                        <img src="https://cdn-icons-png.flaticon.com/512/733/733635.png" alt="X" loading="lazy"> X
+                    </a>
+                    <a href="https://t.me/td_gj" target="_blank" class="social-btn telegram">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" alt="Telegram" loading="lazy"> Telegram
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      
+        var canvas;
+        var context;
+        var screenH;
+        var screenW;
+        var stars = [];
+        var starfps = 60;
+        var numStars = 500;
+        var intervalStars;
+        var intervalFallingStar;
+
+        $(document).ready(function() {
+            screenH = $(window).height();
+            screenW = $(window).width();
+            canvas = $('#deepspace');
+            canvas.attr('height', screenH);
+            canvas.attr('width', screenW);
+            context = canvas[0].getContext('2d');
+
+            for (var i = 0; i < numStars; i++) {
+                var x = Math.round(Math.random() * screenW);
+                var y = Math.round(Math.random() * screenH);
+                var length = 1 + Math.random() * 1.5;
+                var opacity = Math.random();
+                var star = new buildStar(x, y, length, opacity);
+                stars.push(star);
+            }
+
+           
+            if (!document.body.classList.contains('day')) {
+                intervalStars = setInterval(animStars, 1000 / starfps);
+                intervalFallingStar = setInterval(createFallingStar, 500);
+            }
+        });
+
+        function animStars() {
+            context.clearRect(0, 0, screenW, screenH);
+            $.each(stars, function() {
+                this.draw(context);
+            });
+        }
+
+        function buildStar(x, y, length, opacity) {
+            this.x = parseInt(x);
+            this.y = parseInt(y);
+            this.length = parseInt(length);
+            this.opacity = opacity;
+            this.factor = 1;
+            this.increment = Math.random() * 0.03;
+        }
+
+        buildStar.prototype.draw = function() {
+            context.rotate((Math.PI * 1 / 10));
+            context.save();
+            context.translate(this.x, this.y);
+
+            if (this.opacity > 1) {
+                this.factor = -1;
+            } else if (this.opacity <= 0) {
+                this.factor = 1;
+                this.x = Math.round(Math.random() * screenW);
+                this.y = Math.round(Math.random() * screenH);
+            }
+
+            this.opacity += this.increment * this.factor;
+
+            context.beginPath();
+            for (var i = 5; i--;) {
+                context.lineTo(0, this.length);
+                context.translate(0, this.length);
+                context.rotate((Math.PI * 2 / 10));
+                context.lineTo(0, -this.length);
+                context.translate(0, -this.length);
+                context.rotate(-(Math.PI * 6 / 10));
+            }
+            context.lineTo(0, this.length);
+            context.closePath();
+            context.fillStyle = "rgba(255, 255, 200, " + this.opacity + ")";
+            context.shadowBlur = 5;
+            context.shadowColor = '#fff';
+            context.fill();
+            context.restore();
+        }
+
+       
+        document.addEventListener('mousemove', (e) => {
+            if (document.body.classList.contains('day')) return;
+            if (Math.random() > 0.9) {
+                const star = document.createElement('div');
+                star.className = 'star-particle';
+                star.style.left = `${e.clientX}px`;
+                star.style.top = `${e.clientY}px`;
+                const size = Math.random() * 3 + 1;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                const darkColors = ['#fff', '#ffd700', '#ffeb3b', '#87ceeb'];
+                star.style.background = `radial-gradient(circle, ${darkColors[Math.floor(Math.random() * darkColors.length)]} 20%, transparent 80%)`;
+                star.style.animation = `moveStar 0.8s ease-out forwards`;
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 800);
+            }
+        });
+
+       
+        function createFallingStar() {
+            if (document.body.classList.contains('day')) return; 
+            if (Math.random() > 0.5) {
+                const star = document.createElement('div');
+                star.className = 'falling-star';
+                star.style.left = `${Math.random() * 100}vw`;
+                star.style.top = `-${Math.random() * 10}px`;
+                const size = Math.random() * 2 + 1;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                const darkColors = ['#fff', '#ffd700', '#ffeb3b', '#87ceeb'];
+                star.style.background = `radial-gradient(circle, ${darkColors[Math.floor(Math.random() * darkColors.length)]} 20%, transparent 80%)`;
+                star.style.animation = `fall 3s linear forwards`;
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 3000);
+            }
+        }
+
+      
+        $(document).ready(function() {
+            const themeToggleBtn = $('#theme-toggle');
+            const body = $('body');
+
+            if (localStorage.getItem('theme') === 'light') {
+                body.addClass('day');
+                themeToggleBtn.text('Dark Mode');
+            }
+
+            themeToggleBtn.click(function() {
+                body.toggleClass('day');
+                if (body.hasClass('day')) {
+                    localStorage.setItem('theme', 'light');
+                    themeToggleBtn.text('Dark Mode');
+                    
+                    clearInterval(intervalStars);
+                    clearInterval(intervalFallingStar);
+                    context.clearRect(0, 0, screenW, screenH);
+                    $('.star-particle, .falling-star').remove(); 
+                } else {
+                    localStorage.setItem('theme', 'dark');
+                    themeToggleBtn.text('Light Mode');
+                    
+                    intervalStars = setInterval(animStars, 1000 / starfps);
+                    intervalFallingStar = setInterval(createFallingStar, 500);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

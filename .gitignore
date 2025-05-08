@@ -1,6 +1,6 @@
 .env
 key.enc
 access.log
-node_modules/
+
 *.log
 firebase-config.js

@@ -22,7 +22,7 @@ app.get('/firebase-config', (req, res) => {
 
 const encodedFirebaseConfig = process.env.GJ_TEAM;
 if (!encodedFirebaseConfig) {
-    throw new Error('Lỗi');
+    throw new Error('FIREBASE_CONFIG không được cấu hình trong environment variables');
 }
 
 const firebaseConfig = JSON.parse(Buffer.from(encodedFirebaseConfig, 'base64').toString('utf8'));

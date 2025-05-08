@@ -4,17 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mua ETH Sepolia</title>
-    <link rel="icon" type="image/x-icon" href="./img/gj.jfif">
+    <link rel="icon" type="image/x-icon" href="./gj.jfif">
     <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.0/dist/ethers.umd.min.js"></script>
     <style>
-        .history-item .status-success { color: green !important; font-weight: bold; }
-        .history-item .status-pending { color: red !important; font-weight: bold; }
-        .history-item { margin-bottom: 20px; padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 8px; }
-        .history-item p { margin: 5px 0; }
-        .history-item a { color: #00ff00; text-decoration: none; }
-        .history-item a:hover { text-decoration: underline; }
+        
+        .history-item .status-success {
+            color: green !important;
+            font-weight: bold;
+        }
+        .history-item .status-pending {
+            color: red !important;
+            font-weight: bold;
+        }
+        .history-item {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        .history-item p {
+            margin: 5px 0;
+        }
+        .history-item a {
+            color: #00ff00;
+            text-decoration: none;
+        }
+        .history-item a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -29,6 +48,7 @@
     </div>
     <nav class="nav-menu">
         <a href="index.html" class="nav-btn">Trang chủ</a>
+      
         <a href="gjtool.html" class="nav-btn">Wallet Tools</a>
         <a href="buyethsepolia.html" class="nav-btn active">Mua ETH Sepolia</a>
         <button id="theme-toggle" class="nav-btn">Thay đổi nền</button>
@@ -47,32 +67,26 @@
     </div>
 
     <script type="module">
+       
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-      
-        async function getFirebaseConfig() {
-            try {
-                const response = await fetch('/firebase-config');
-                if (!response.ok) throw new Error('Failed to fetch Firebase config');
-                return await response.json();
-            } catch (error) {
-                console.error('Error fetching Firebase config:', error);
-                document.getElementById('result').innerHTML = 'Lỗi tải cấu hình Firebase';
-                throw error;
-            }
-        }
+       
+        const encodedFirebaseConfig = "eyJhcGlLZXkiOiJBSXphU3lCam9GQUFyRVZBZkZHSEhlTEwtV0M0cldMLUhDaDZKeHhFIiwiYXV0aERvbWFpbiI6ImdqcHJvamVjdDEtMzdlMjkuZmlyZWJhc2VhcHAuY29tIiwicHJvamVjdElkIjoiZ2pwcm9qZWN0MS0zN2UyOSIsInN0b3JhZ2VCdWNrZXQiOiJnanByb2plY3QxLTM3ZTI5LmZpcmViYXNlc3RvcmFnZS5hcHAiLCJtZXNzYWdpbmdTZW5kZXJJZCI6IjczMzY1ODQ5OTgxIiwiYXBwSWQiOiIxOjczMzY1ODQ5OTgxOndlYjpjZTE1YmYyOWEwNjNlYjFhNzhhZTE0IiwibWVhc3VyZW1lbnRJZCI6IkctUlBYRkhYVlQxWSJ9";
 
-        
-        const firebaseConfig = await getFirebaseConfig();
+      
+        const firebaseConfig = JSON.parse(atob(encodedFirebaseConfig));
+
+       
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        
-        const contractAddress = "0x458Ca89eDAd0aDc829694BfA51565bA67AabeF61";
-        const ethPerUsd = 4;
+       
+        const contractAddress = "0x458Ca89eDAd0aDc829694BfA51565bA67AabeF61"; 
+        const ethPerUsd = 4; 
         let bnbPriceUsd = 0;
 
+        
         async function fetchBnbPrice() {
             try {
                 const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd');
@@ -82,18 +96,20 @@
                 updateEthAmount();
             } catch (error) {
                 console.error('Lỗi lấy giá BNB:', error);
-                bnbPriceUsd = 597.80;
+                bnbPriceUsd = 597.80; 
                 document.getElementById('bnbRate').textContent = (bnbPriceUsd * ethPerUsd).toFixed(2);
                 updateEthAmount();
             }
         }
 
+        
         function updateEthAmount() {
             const amount = parseFloat(document.getElementById('amount').value) || 0;
             const sethAmount = amount * bnbPriceUsd * ethPerUsd;
             document.getElementById('ethAmount').textContent = sethAmount.toFixed(4);
         }
 
+        
         async function loadHistory(userAddress) {
             const historyDiv = document.getElementById('history');
             try {
@@ -125,6 +141,7 @@
             }
         }
 
+      
         async function buySepoliaEth() {
             const amount = parseFloat(document.getElementById('amount').value);
             if (!amount || amount <= 0) {
@@ -146,12 +163,14 @@
                 const signer = provider.getSigner();
                 const userAddress = await signer.getAddress();
 
+              
                 const network = await provider.getNetwork();
                 if (network.chainId !== 56) {
                     alert('Vui lòng chuyển MetaMask sang BSC Mainnet!');
                     return;
                 }
 
+               
                 const bnbAmount = ethers.utils.parseEther(amount.toString());
                 const tx = await signer.sendTransaction({
                     to: contractAddress,
@@ -161,7 +180,10 @@
                 await tx.wait();
                 resultDiv.innerHTML = `Giao dịch thành công! Tx: <a href="https://bscscan.com/tx/${tx.hash}" target="_blank">${tx.hash.slice(0, 10)}...</a><br>Chờ xử lý tự động để nhận ETH Sepolia.`;
 
+              
                 const sethAmount = amount * bnbPriceUsd * ethPerUsd;
+
+              
                 await addDoc(collection(db, "purchases"), {
                     userAddress: userAddress,
                     token: 'bnb',
@@ -172,7 +194,9 @@
                     timestamp: new Date().toISOString()
                 });
 
+              
                 await loadHistory(userAddress);
+
                 resultDiv.innerHTML += `<br>Giao dịch đã được ghi. ETH Sepolia sẽ được gửi tự động sau khi xác nhận.`;
             } catch (error) {
                 console.error('Lỗi giao dịch:', error);
@@ -180,6 +204,7 @@
             }
         }
 
+      
         async function init() {
             if (window.ethereum) {
                 try {
@@ -197,6 +222,7 @@
             }
         }
 
+       
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('buyBtn').addEventListener('click', buySepoliaEth);
             document.getElementById('amount').addEventListener('input', updateEthAmount);
@@ -205,6 +231,7 @@
         });
     </script>
     <script>
+        
         var canvas;
         var context;
         var screenH;

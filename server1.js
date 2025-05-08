@@ -1,3 +1,4 @@
+const express = require('express');
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs, query, where, updateDoc, getDoc, setDoc, doc } = require('firebase/firestore');
 const { ethers } = require('ethers');
@@ -6,6 +7,23 @@ const crypto = require('crypto');
 const fs = require('fs').promises;
 const fsConstants = require('fs').constants;
 require('dotenv').config();
+
+const app = express();
+
+// Phục vụ tệp tĩnh từ thư mục public
+app.use(express.static('public'));
+
+// Endpoint trả về cấu hình Firebase
+app.get('/firebase-config', (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*'); // Cho phép CORS
+    try {
+        const firebaseConfig = JSON.parse(Buffer.from(process.env.FIREBASE_CONFIG, 'base64').toString('utf8'));
+        res.json(firebaseConfig);
+    } catch (error) {
+        console.error('Lỗi trả về cấu hình Firebase:', error.message);
+        res.status(500).json({ error: 'Không thể lấy cấu hình Firebase' });
+    }
+});
 
 // Firebase configuration từ environment variables
 const encodedFirebaseConfig = process.env.FIREBASE_CONFIG;
@@ -241,4 +259,6 @@ async function processPurchases() {
 setInterval(processPurchases, 1 * 60 * 1000);
 processPurchases();
 
-console.log('Server1 running');
+// Khởi động server
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Server running on port ${port}`));

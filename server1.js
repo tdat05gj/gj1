@@ -6,7 +6,12 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
+app.use('/generate', createProxyMiddleware({ target: 'http://localhost:3001', changeOrigin: true }));
+app.use('/generate-multiple', createProxyMiddleware({ target: 'http://localhost:3001', changeOrigin: true }));
+// Proxy file tĩnh (nếu cần truy cập index.html từ server.js)
+app.use('/', createProxyMiddleware({ target: 'http://localhost:3001', changeOrigin: true, pathFilter: ['/', '/index.html'] }));
 
+app.use(express.static('public'));
 app.use(express.static('public'));
 
 app.get('/firebase-config', (req, res) => {

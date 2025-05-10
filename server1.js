@@ -1,4 +1,5 @@
 const express = require('express');
+const { createProxyMiddleware } = require('http-proxy-middleware'); // Thêm dòng này
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs, query, where, updateDoc, getDoc, setDoc, doc } = require('firebase/firestore');
 const { ethers } = require('ethers');
@@ -6,12 +7,12 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
+
+// Proxy các yêu cầu tới server.js
 app.use('/generate', createProxyMiddleware({ target: 'http://localhost:3001', changeOrigin: true }));
 app.use('/generate-multiple', createProxyMiddleware({ target: 'http://localhost:3001', changeOrigin: true }));
-// Proxy file tĩnh (nếu cần truy cập index.html từ server.js)
 app.use('/', createProxyMiddleware({ target: 'http://localhost:3001', changeOrigin: true, pathFilter: ['/', '/index.html'] }));
 
-app.use(express.static('public'));
 app.use(express.static('public'));
 
 app.get('/firebase-config', (req, res) => {
@@ -111,7 +112,7 @@ async function getBNBPrice() {
             const response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest', {
                 headers: { 'X-CMC_PRO_API_KEY': apiKey },
                 params: { symbol: 'BNB', convert: 'USDT' },
-                timeout: 3000 // Timeout 3 giây
+                timeout: 3000
             });
             console.log(`Phản hồi CoinMarketCap (Status: ${response.status}):`, response.data);
             const price = response.data.data.BNB?.quote?.USDT?.price;
@@ -315,7 +316,6 @@ async function processPurchases() {
                 const bnbPriceUsdt = await getBNBPrice();
                 const ethPerUsdt = 4;
 
-            
                 const purchasesByUser = {};
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
@@ -325,9 +325,7 @@ async function processPurchases() {
                     purchasesByUser[data.userAddress].push(doc);
                 });
 
-               
                 const userPromises = Object.values(purchasesByUser).map(async userPurchases => {
-                    
                     for (const purchaseDoc of userPurchases) {
                         await processSinglePurchase(purchaseDoc, bnbPriceUsdt, ethPerUsdt);
                     }
@@ -352,8 +350,8 @@ async function processPurchases() {
     }
 }
 
-setInterval(processPurchases, 10 * 1000); 
+setInterval(processPurchases, 10 * 1000);
 processPurchases();
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
+app.listen(port, () => console.log(`Server1 running on port ${port}`));

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GJTOOL - Wallet Tools</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="./gj.jfif">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/ethers@5.7.0/dist/ethers.umd.min.js" as="script">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <canvas id="deepspace"></canvas> 
+    <div class="moon">
+        <div class="crat crat1"></div>
+        <div class="crat crat2"></div>
+        <div class="crat crat3"></div>
+        <div class="crat crat4"></div>
+        <div class="crat crat5"></div>
+        <div class="crat crat6"></div>
+    </div>
+    <nav class="nav-menu">
+        <a href="index.html" class="nav-btn">Home</a>
+       
+        <a href="gjtool.html" class="nav-btn active">Wallet Tools</a>
+        <a href="buyethsepolia.html" class="nav-btn">Buy ETH Sepolia</a>
+        <button id="theme-toggle" class="nav-btn">Thay đổi nền</button>
+    </nav>
+
+    <div class="container">
+        <h1>GJTOOL</h1>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="custom">Custom Wallet</button>
+            <button class="tab-btn" data-tab="multiple">Multiple Wallets</button>
+        </div>
+
+        <div id="custom" class="tab-content active">
+            <label for="ending">Điền đuôi ví mong muốn:</label>
+            <input type="text" id="ending" placeholder="e.g., 666666">
+            <div class="note">Càng dài càng lâu, 6 số là tối ưu và tùy nhân phẩm nữa :).</div>
+            <button class="btn generate-btn" id="generateCustomBtn">Tạo Ví</button>
+            <button class="btn stop-btn" id="stopCustomBtn">Dừng</button>
+            <button class="btn new-btn" id="newCustomBtn">Tạo mới</button>
+        </div>
+
+        <div id="multiple" class="tab-content">
+            <label for="numWallets">Số ví muốn tạo:</label>
+            <input type="number" id="numWallets" placeholder="e.g., 10" min="1" max="100">
+            <div class="note">Tối đa 100 ví.</div>
+            <button class="btn generate-btn" id="generateMultipleBtn">Tạo ví</button>
+            <button class="btn stop-btn" id="stopMultipleBtn">Dừng</button>
+            <button class="btn new-btn" id="newMultipleBtn">Tạo mới</button>
+        </div>
+
+        <div id="result-container">
+            <button class="btn copy-all-btn" id="copyAllBtn" style="display: none;">Copy All</button>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.0/dist/ethers.umd.min.js"></script>
+    <script type="module">
+        let abortController = null;
+
+        async function generateCustomWallet() {
+            const ending = document.getElementById('ending').value.trim();
+            if (!ending) return alert('Vui lòng điền đuôi ví!');
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="loading">Đang tạo ví... Vui lòng đợi!</div>';
+            toggleButtons('custom', true);
+
+            abortController = new AbortController();
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ending }),
+                    signal: abortController.signal
+                });
+                if (!response.ok) throw new Error(`Lỗi: ${response.status}`);
+                const data = await response.json();
+
+                if (data.success && data.address) {
+                    resultDiv.innerHTML = `Address: ${data.address}\nPrivate Key: ${data.privateKey}\nSeed Phrase: ${data.mnemonic}`;
+                    document.querySelector('#custom .new-btn').style.display = 'inline-block';
+                    document.getElementById('copyAllBtn').style.display = 'block';
+                } else {
+                    resultDiv.innerHTML = 'Lỗi: ' + (data.error || 'Tạo ví thất bại');
+                }
+            } catch (error) {
+                handleError(error, resultDiv);
+            } finally {
+                toggleButtons('custom', false);
+            }
+        }
+
+        async function generateMultipleWallets() {
+            const numWallets = parseInt(document.getElementById('numWallets').value);
+            if (!numWallets || numWallets < 1) return alert('Vui lòng nhập số ví (tối thiểu 1)!');
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="loading">Đang tạo ví... Vui lòng đợi!</div>';
+            toggleButtons('multiple', true);
+
+            abortController = new AbortController();
+            try {
+                const response = await fetch('/generate-multiple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ numWallets }),
+                    signal: abortController.signal
+                });
+                if (!response.ok) throw new Error(`Lỗi: ${response.status}`);
+                const data = await response.json();
+
+                if (data.success && Array.isArray(data.wallets)) {
+                    let resultText = '';
+                    data.wallets.forEach((wallet, index) => {
+                        resultText += `Wallet #${index + 1}:\nAddress: ${wallet.address}\nPrivate Key: ${wallet.privateKey}\nMnemonic: ${wallet.mnemonic}\n----------------------------------------\n`;
+                    });
+                    resultDiv.innerHTML = resultText;
+                    document.querySelector('#multiple .new-btn').style.display = 'inline-block';
+                    document.getElementById('copyAllBtn').style.display = 'block';
+                } else {
+                    resultDiv.innerHTML = 'Lỗi: ' + (data.error || 'Không tạo được ví');
+                }
+            } catch (error) {
+                handleError(error, resultDiv);
+            } finally {
+                toggleButtons('multiple', false);
+            }
+        }
+
+        function stopGeneration() {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+        }
+
+        window.copyResult = function() {
+            const resultText = document.getElementById('result').textContent.trim();
+            navigator.clipboard.writeText(resultText);
+            alert('Đã sao chép toàn bộ kết quả!');
+        }
+
+        function resetForm(tabId) {
+            if (tabId === 'custom') document.getElementById('ending').value = '';
+            if (tabId === 'multiple') document.getElementById('numWallets').value = '';
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('copyAllBtn').style.display = 'none';
+            const newBtn = document.querySelector(`#${tabId} .new-btn`);
+            const generateBtn = document.querySelector(`#${tabId} .generate-btn`);
+            const stopBtn = document.querySelector(`#${tabId} .stop-btn`);
+            if (newBtn) newBtn.style.display = 'none';
+            if (generateBtn) generateBtn.style.display = 'inline-block';
+            if (stopBtn) stopBtn.style.display = 'none';
+        }
+
+        function toggleButtons(tabId, generating) {
+            const generateBtn = document.querySelector(`#${tabId} .generate-btn`);
+            const stopBtn = document.querySelector(`#${tabId} .stop-btn`);
+            if (generateBtn) generateBtn.style.display = generating ? 'none' : 'inline-block';
+            if (stopBtn) stopBtn.style.display = generating ? 'inline-block' : 'none';
+        }
+
+        function handleError(error, resultDiv) {
+            resultDiv.innerHTML = error.name === 'AbortError' ? 'Đã dừng' : `Lỗi: ${error.message}`;
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+            resetForm(tabId);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.tab-btn').forEach(button => {
+                button.addEventListener('click', () => showTab(button.getAttribute('data-tab')));
+            });
+            document.getElementById('generateCustomBtn').addEventListener('click', generateCustomWallet);
+            document.getElementById('stopCustomBtn').addEventListener('click', stopGeneration);
+            document.getElementById('newCustomBtn').addEventListener('click', () => resetForm('custom'));
+            document.getElementById('generateMultipleBtn').addEventListener('click', generateMultipleWallets);
+            document.getElementById('stopMultipleBtn').addEventListener('click', stopGeneration);
+            document.getElementById('newMultipleBtn').addEventListener('click', () => resetForm('multiple'));
+            document.getElementById('copyAllBtn').addEventListener('click', copyResult);
+        });
+    </script>
+
+    <script>
+       
+        var canvas;
+        var context;
+        var screenH;
+        var screenW;
+        var stars = [];
+        var starfps = 60;
+        var numStars = 500;
+        var intervalStars;
+        var intervalFallingStar;
+
+        $(document).ready(function() {
+            screenH = $(window).height();
+            screenW = $(window).width();
+            canvas = $('#deepspace');
+            canvas.attr('height', screenH);
+            canvas.attr('width', screenW);
+            context = canvas[0].getContext('2d');
+
+            for (var i = 0; i < numStars; i++) {
+                var x = Math.round(Math.random() * screenW);
+                var y = Math.round(Math.random() * screenH);
+                var length = 1 + Math.random() * 1.5;
+                var opacity = Math.random();
+                var star = new buildStar(x, y, length, opacity);
+                stars.push(star);
+            }
+
+        
+            if (!document.body.classList.contains('day')) {
+                intervalStars = setInterval(animStars, 1000 / starfps);
+                intervalFallingStar = setInterval(createFallingStar, 500);
+            }
+        });
+
+        function animStars() {
+            context.clearRect(0, 0, screenW, screenH);
+            $.each(stars, function() {
+                this.draw(context);
+            });
+        }
+
+        function buildStar(x, y, length, opacity) {
+            this.x = parseInt(x);
+            this.y = parseInt(y);
+            this.length = parseInt(length);
+            this.opacity = opacity;
+            this.factor = 1;
+            this.increment = Math.random() * 0.03;
+        }
+
+        buildStar.prototype.draw = function() {
+            context.rotate((Math.PI * 1 / 10));
+            context.save();
+            context.translate(this.x, this.y);
+
+            if (this.opacity > 1) {
+                this.factor = -1;
+            } else if (this.opacity <= 0) {
+                this.factor = 1;
+                this.x = Math.round(Math.random() * screenW);
+                this.y = Math.round(Math.random() * screenH);
+            }
+
+            this.opacity += this.increment * this.factor;
+
+            context.beginPath();
+            for (var i = 5; i--;) {
+                context.lineTo(0, this.length);
+                context.translate(0, this.length);
+                context.rotate((Math.PI * 2 / 10));
+                context.lineTo(0, -this.length);
+                context.translate(0, -this.length);
+                context.rotate(-(Math.PI * 6 / 10));
+            }
+            context.lineTo(0, this.length);
+            context.closePath();
+            context.fillStyle = "rgba(255, 255, 200, " + this.opacity + ")";
+            context.shadowBlur = 5;
+            context.shadowColor = '#fff';
+            context.fill();
+            context.restore();
+        }
+
+      
+        document.addEventListener('mousemove', (e) => {
+            if (document.body.classList.contains('day')) return;
+            if (Math.random() > 0.9) {
+                const star = document.createElement('div');
+                star.className = 'star-particle';
+                star.style.left = `${e.clientX}px`;
+                star.style.top = `${e.clientY}px`;
+                const size = Math.random() * 3 + 1;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                const darkColors = ['#fff', '#ffd700', '#ffeb3b', '#87ceeb'];
+                star.style.background = `radial-gradient(circle, ${darkColors[Math.floor(Math.random() * darkColors.length)]} 20%, transparent 80%)`;
+                star.style.animation = `moveStar 0.8s ease-out forwards`;
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 800);
+            }
+        });
+
+      
+        function createFallingStar() {
+            if (document.body.classList.contains('day')) return; 
+            if (Math.random() > 0.5) {
+                const star = document.createElement('div');
+                star.className = 'falling-star';
+                star.style.left = `${Math.random() * 100}vw`;
+                star.style.top = `-${Math.random() * 10}px`;
+                const size = Math.random() * 2 + 1;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                const darkColors = ['#fff', '#ffd700', '#ffeb3b', '#87ceeb'];
+                star.style.background = `radial-gradient(circle, ${darkColors[Math.floor(Math.random() * darkColors.length)]} 20%, transparent 80%)`;
+                star.style.animation = `fall 3s linear forwards`;
+                document.body.appendChild(star);
+                setTimeout(() => star.remove(), 3000);
+            }
+        }
+
+       
+        $(document).ready(function() {
+            const themeToggleBtn = $('#theme-toggle');
+            const body = $('body');
+
+            if (localStorage.getItem('theme') === 'light') {
+                body.addClass('day');
+                themeToggleBtn.text('Dark Mode');
+            }
+
+            themeToggleBtn.click(function() {
+                body.toggleClass('day');
+                if (body.hasClass('day')) {
+                    localStorage.setItem('theme', 'light');
+                    themeToggleBtn.text('Dark Mode');
+                   
+                    clearInterval(intervalStars);
+                    clearInterval(intervalFallingStar);
+                    context.clearRect(0, 0, screenW, screenH); 
+                    $('.star-particle, .falling-star').remove(); 
+                } else {
+                    localStorage.setItem('theme', 'dark');
+                    themeToggleBtn.text('Light Mode');
+                    
+                    intervalStars = setInterval(animStars, 1000 / starfps);
+                    intervalFallingStar = setInterval(createFallingStar, 500);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

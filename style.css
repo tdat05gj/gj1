@@ -9,8 +9,8 @@ body {
     max-width: 900px;
     margin: 0 auto;
     padding: 70px 15px 30px;
-    background: linear-gradient(45deg, rgba(0,1,19,1) 0%, rgba(1,10,53,1) 15%, rgba(1,13,61,1) 60%, rgba(0,1,19,1) 100%); /* Nền từ code mới */
-    color: #fff;
+    background: linear-gradient(45deg, rgba(0,1,19,1) 0%, rgba(1,10,53,1) 15%, rgba(1,13,61,1) 60%, rgba(0,1,19,1) 100%); 
+        color: #fff;
     line-height: 1.5;
     overflow-x: hidden;
     transition: background 0.3s ease, color 0.3s ease;
